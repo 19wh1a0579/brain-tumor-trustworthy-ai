@@ -328,14 +328,14 @@ if uploaded_file is not None:
         st.image(
             original_img,
             caption="Original MRI Scan",
-            use_container_width=True
+            width=350
         )
 
     with col2:
         st.image(
             overlay,
             caption="Grad-CAM Explainability",
-            use_container_width=True
+            width=350
         )
 
     st.subheader("Prediction Results")
