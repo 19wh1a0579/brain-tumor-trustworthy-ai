@@ -12,7 +12,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet_v2 import preprocess_input
 
 
-st.set_page_confi g(
+st.set_page_config(
     page_title="Brain Tumor Trustworthy AI",
     layout="wide"
 )
