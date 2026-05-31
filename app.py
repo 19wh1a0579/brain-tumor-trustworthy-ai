@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.title(
-    "🧠 Brain Tumor Classification using Trustworthy AI"
+    "Brain Tumor Classification using Explainable AI"
 )
 
 
