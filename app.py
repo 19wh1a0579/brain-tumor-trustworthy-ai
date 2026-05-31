@@ -113,3 +113,91 @@ classifier_model.layers[4].set_weights(
 )
 
 st.success("Grad-CAM Components Ready")
+
+
+def generate_gradcam(feature_maps,
+                     classifier_model):
+
+    feature_maps_tensor = tf.convert_to_tensor(
+        feature_maps,
+        dtype=tf.float32
+    )
+
+    with tf.GradientTape() as tape:
+
+        tape.watch(feature_maps_tensor)
+
+        preds = classifier_model(
+            feature_maps_tensor,
+            training=False
+        )
+
+        pred_index = tf.argmax(
+            preds[0]
+        )
+
+        class_score = preds[:, pred_index]
+
+    grads = tape.gradient(
+        class_score,
+        feature_maps_tensor
+    )
+
+    pooled_grads = tf.reduce_mean(
+        grads,
+        axis=(0,1,2)
+    )
+
+    feature_map = feature_maps_tensor[0]
+
+    heatmap = tf.reduce_sum(
+        feature_map * pooled_grads,
+        axis=-1
+    )
+
+    heatmap = tf.maximum(
+        heatmap,
+        0
+    )
+
+    heatmap = heatmap / (
+        tf.reduce_max(heatmap) + 1e-8
+    )
+
+    return heatmap.numpy()
+
+
+def create_overlay(original_img,
+                   heatmap):
+
+    heatmap_resized = cv2.resize(
+        heatmap,
+        (
+            original_img.shape[1],
+            original_img.shape[0]
+        )
+    )
+
+    heatmap_uint8 = np.uint8(
+        255 * heatmap_resized
+    )
+
+    heatmap_color = cv2.applyColorMap(
+        heatmap_uint8,
+        cv2.COLORMAP_JET
+    )
+
+    heatmap_color = cv2.cvtColor(
+        heatmap_color,
+        cv2.COLOR_BGR2RGB
+    )
+
+    overlay = cv2.addWeighted(
+        original_img,
+        0.6,
+        heatmap_color,
+        0.4,
+        0
+    )
+
+    return overlay
