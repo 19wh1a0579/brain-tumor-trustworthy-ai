@@ -32,7 +32,8 @@ def load_brain_tumor_model():
 
     model_path = hf_hub_download(
         repo_id="suvidha-reddy/brain-tumor-trustworthy-ai",
-        filename="brain_tumor_resnet152v2.h5"
+        filename="brain_tumor_resnet152v2.h5",
+        repo_type="model"
     )
 
     model = load_model(model_path)
@@ -41,7 +42,7 @@ def load_brain_tumor_model():
 
 loaded_model = load_brain_tumor_model()
 
-st.success("Model Loaded Successfully")
+st.sidebar.success("Model Loaded Successfully")
 
 
 
@@ -112,7 +113,7 @@ classifier_model.layers[4].set_weights(
     output_layer.get_weights()
 )
 
-st.success("Grad-CAM Components Ready")
+st.sidebar.success("Grad-CAM Components Ready")
 
 
 def generate_gradcam(feature_maps,
@@ -201,3 +202,159 @@ def create_overlay(original_img,
     )
 
     return overlay
+
+
+def predict_and_explain(img):
+
+    img_resized = img.resize(
+        (224,224)
+    )
+
+    img_array = image.img_to_array(
+        img_resized
+    )
+
+    img_array = np.expand_dims(
+        img_array,
+        axis=0
+    )
+
+    img_array = preprocess_input(
+        img_array
+    )
+
+    # ------------------
+    # Prediction
+    # ------------------
+
+    probs = loaded_model.predict(
+        img_array,
+        verbose=0
+    )[0]
+
+    pred_idx = np.argmax(
+        probs
+    )
+
+    pred_class = class_names[
+        pred_idx
+    ]
+
+    confidence = float(
+        np.max(probs) * 100
+    )
+
+    # ------------------
+    # Entropy
+    # ------------------
+
+    probs_safe = np.clip(
+        probs,
+        1e-10,
+        1.0
+    )
+
+    entropy = float(
+        -np.sum(
+            probs_safe *
+            np.log(probs_safe)
+        )
+    )
+
+    if entropy < 0.5:
+        uncertainty = "LOW"
+
+    elif entropy < 1.0:
+        uncertainty = "MEDIUM"
+
+    else:
+        uncertainty = "HIGH"
+
+    # ------------------
+    # Grad-CAM
+    # ------------------
+
+    feature_maps = grad_backbone.predict(
+        img_array,
+        verbose=0
+    )
+
+    heatmap = generate_gradcam(
+        feature_maps,
+        classifier_model
+    )
+
+    return (
+        pred_class,
+        confidence,
+        entropy,
+        uncertainty,
+        heatmap
+    )
+
+
+uploaded_file = st.file_uploader(
+    "Upload MRI Image",
+    type=["jpg","jpeg","png"]
+)
+
+if uploaded_file is not None:
+
+    img = Image.open(
+        uploaded_file
+    ).convert("RGB")
+
+    original_img = np.array(
+        img
+    )
+
+    with st.spinner(
+        "Analyzing MRI..."
+    ):
+
+        pred_class, confidence, entropy, uncertainty, heatmap = predict_and_explain(
+            img
+        )
+
+        overlay = create_overlay(
+            original_img,
+            heatmap
+        )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.image(
+            original_img,
+            caption="Original MRI"
+        )
+
+    with col2:
+
+        st.image(
+            overlay,
+            caption="Grad-CAM Overlay"
+        )
+
+    st.subheader("Prediction Results")
+
+    st.metric(
+    "Prediction",
+    pred_class
+    )
+
+    st.metric(
+    "Confidence",
+    f"{confidence:.2f}%"
+    )
+
+    st.metric(
+        "Entropy",
+        f"{entropy:.4f}"
+    )
+
+    st.metric(
+        "Uncertainty",
+        uncertainty
+    )
