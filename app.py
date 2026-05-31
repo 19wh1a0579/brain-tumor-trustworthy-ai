@@ -9,11 +9,10 @@ from huggingface_hub import hf_hub_download
 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.resnet_v2 
-import preprocess_input
+from tensorflow.keras.applications.resnet_v2 import preprocess_input
 
 
-st.set_page_config(
+st.set_page_confi g(
     page_title="Brain Tumor Trustworthy AI",
     layout="wide"
 )
