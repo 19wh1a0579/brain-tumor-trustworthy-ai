@@ -63,4 +63,53 @@ grad_backbone = tf.keras.Model(
 
 
 
+bn_layer = loaded_model.get_layer(
+    "batch_normalization"
+)
 
+dense_layer = loaded_model.get_layer(
+    "dense"
+)
+
+output_layer = loaded_model.get_layer(
+    "dense_1"
+)
+
+feature_input = tf.keras.Input(
+    shape=(7,7,2048)
+)
+
+x = tf.keras.layers.GlobalAveragePooling2D()(
+    feature_input
+)
+
+x = tf.keras.layers.BatchNormalization()(x)
+
+x = tf.keras.layers.Dense(
+    256,
+    activation="relu"
+)(x)
+
+predictions = tf.keras.layers.Dense(
+    4,
+    activation="softmax"
+)(x)
+
+classifier_model = tf.keras.Model(
+    feature_input,
+    predictions
+)
+
+classifier_model.layers[2].set_weights(
+    bn_layer.get_weights()
+)
+
+classifier_model.layers[3].set_weights(
+    dense_layer.get_weights()
+)
+
+classifier_model.layers[4].set_weights(
+    output_layer.get_weights()
+)
+
+st.success("Grad-CAM Components Ready")
