@@ -21,10 +21,20 @@ st.title(
     "🧠 Brain Tumor Classification using Trustworthy AI"
 )
 
-st.write(
-    "Prediction + Confidence + Uncertainty + Grad-CAM"
-)
+st.markdown("""
+This system classifies Brain MRI scans into:
 
+- Glioma Tumor
+- Meningioma Tumor
+- Pituitary Tumor
+- No Tumor
+
+### Features
+✅ Deep Learning Prediction  
+✅ Confidence Score  
+✅ Entropy-based Uncertainty  
+✅ Grad-CAM Explainability
+""")
 
 
 @st.cache_resource
@@ -42,7 +52,6 @@ def load_brain_tumor_model():
 
 loaded_model = load_brain_tumor_model()
 
-st.sidebar.success("Model Loaded Successfully")
 
 
 
@@ -52,6 +61,12 @@ class_names = [
     "notumor",
     "pituitary"
 ]
+tumor_names = {
+    "glioma": "Glioma Tumor",
+    "meningioma": "Meningioma Tumor",
+    "pituitary": "Pituitary Tumor",
+    "notumor": "No Tumor"
+}
 
 
 
@@ -295,66 +310,105 @@ def predict_and_explain(img):
 
 uploaded_file = st.file_uploader(
     "Upload MRI Image",
-    type=["jpg","jpeg","png"]
+    type=["jpg", "jpeg", "png"]
 )
+
+tumor_names = {
+    "glioma": "Glioma Tumor",
+    "meningioma": "Meningioma Tumor",
+    "pituitary": "Pituitary Tumor",
+    "notumor": "No Tumor"
+}
 
 if uploaded_file is not None:
 
-    img = Image.open(
-        uploaded_file
-    ).convert("RGB")
+    img = Image.open(uploaded_file).convert("RGB")
 
-    original_img = np.array(
-        img
-    )
+    original_img = np.array(img)
 
-    with st.spinner(
-        "Analyzing MRI..."
-    ):
+    with st.spinner("Analyzing MRI..."):
 
-        pred_class, confidence, entropy, uncertainty, heatmap = predict_and_explain(
-            img
-        )
+        pred_class, confidence, entropy, uncertainty, heatmap = predict_and_explain(img)
 
         overlay = create_overlay(
             original_img,
             heatmap
         )
 
+    st.subheader("MRI Analysis")
+
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.image(
             original_img,
-            caption="Original MRI"
+            caption="Original MRI Scan",
+            use_container_width=True
         )
 
     with col2:
-
         st.image(
             overlay,
-            caption="Grad-CAM Overlay"
+            caption="Grad-CAM Explainability",
+            use_container_width=True
         )
 
     st.subheader("Prediction Results")
 
-    st.metric(
-    "Prediction",
-    pred_class
-    )
+    c1, c2, c3, c4 = st.columns(4)
 
-    st.metric(
-    "Confidence",
-    f"{confidence:.2f}%"
-    )
+    with c1:
+        st.metric(
+            "Prediction",
+            tumor_names[pred_class]
+        )
 
-    st.metric(
-        "Entropy",
-        f"{entropy:.4f}"
-    )
+    with c2:
+        st.metric(
+            "Confidence",
+            f"{confidence:.2f}%"
+        )
 
-    st.metric(
-        "Uncertainty",
-        uncertainty
-    )
+    with c3:
+        st.metric(
+            "Entropy",
+            f"{entropy:.4f}"
+        )
+
+    with c4:
+        st.metric(
+            "Uncertainty",
+            uncertainty
+        )
+
+    st.markdown("---")
+
+    if confidence > 95:
+        st.success(
+            "✅ Very High Confidence Prediction"
+        )
+
+    elif confidence > 80:
+        st.info(
+            "ℹ️ High Confidence Prediction"
+        )
+
+    else:
+        st.warning(
+            "⚠️ Low Confidence Prediction"
+        )
+
+    if uncertainty == "LOW":
+        st.success(
+            "🟢 Uncertainty Level: LOW"
+        )
+
+    elif uncertainty == "MEDIUM":
+        st.warning(
+            "🟡 Uncertainty Level: MEDIUM"
+        )
+
+    else:
+        st.error(
+            "🔴 Uncertainty Level: HIGH"
+        )
