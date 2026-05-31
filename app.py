@@ -113,7 +113,7 @@ classifier_model.layers[4].set_weights(
     output_layer.get_weights()
 )
 
-st.sidebar.success("Grad-CAM Components Ready")
+
 
 
 def generate_gradcam(feature_maps,
