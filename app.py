@@ -21,21 +21,6 @@ st.title(
     "🧠 Brain Tumor Classification using Trustworthy AI"
 )
 
-st.markdown("""
-This system classifies Brain MRI scans into:
-
-- Glioma Tumor
-- Meningioma Tumor
-- Pituitary Tumor
-- No Tumor
-
-### Features
-✅ Deep Learning Prediction  
-✅ Confidence Score  
-✅ Entropy-based Uncertainty  
-✅ Grad-CAM Explainability
-""")
-
 
 @st.cache_resource
 def load_brain_tumor_model():
