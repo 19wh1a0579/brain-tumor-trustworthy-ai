@@ -5,3 +5,4 @@ opencv-python-headless
 matplotlib
 pillow
 huggingface_hub
+h5py
