@@ -66,15 +66,11 @@ header{
 st.markdown("""
 <h2 style='text-align:center;margin-bottom:0px;'>
 
-🧠 Brain Tumor Classification using Explainable AI
+Brain Tumor Classifier
 
 </h2>
 
-<p style='text-align:center;color:gray;margin-top:0px;'>
 
-ResNet152V2 | Grad-CAM | Entropy | Uncertainty
-
-</p>
 
 """, unsafe_allow_html=True)
 
