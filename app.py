@@ -479,13 +479,7 @@ if uploaded_file is not None:
 
         )
 
-        st.metric(
-
-            "Entropy",
-
-            f"{entropy:.4f}"
-
-        )
+       
 
         st.metric(
 
