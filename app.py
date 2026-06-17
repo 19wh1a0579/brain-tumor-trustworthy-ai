@@ -4,23 +4,108 @@ import numpy as np
 import cv2
 
 from PIL import Image
-
 from huggingface_hub import hf_hub_download
-
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet_v2 import preprocess_input
 
 
+# =====================================================
+# PAGE CONFIG
+# =====================================================
+
 st.set_page_config(
     page_title="Brain Tumor Trustworthy AI",
+    page_icon="🧠",
     layout="wide"
 )
 
-st.title(
-    "Brain Tumor Classification using Explainable AI"
-)
+# =====================================================
+# CUSTOM CSS
+# =====================================================
 
+st.markdown("""
+<style>
+
+.main{
+background-color:#f8fafc;
+}
+
+.block-container{
+padding-top:2rem;
+padding-bottom:2rem;
+padding-left:3rem;
+padding-right:3rem;
+}
+
+div[data-testid="metric-container"]{
+background:white;
+padding:20px;
+border-radius:15px;
+border:1px solid #e5e7eb;
+box-shadow:0px 4px 10px rgba(0,0,0,0.08);
+}
+
+footer{
+visibility:hidden;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# HEADER
+# =====================================================
+
+st.markdown("""
+<h1 style='text-align:center;'>
+🧠 Brain Tumor Classification using Explainable AI
+</h1>
+
+<p style='text-align:center; font-size:18px; color:gray;'>
+
+ResNet152V2 • Grad-CAM • Entropy Analysis • Uncertainty Quantification
+
+</p>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
+# SIDEBAR
+# =====================================================
+
+with st.sidebar:
+
+    st.image(
+        "https://img.icons8.com/fluency/96/brain.png",
+        width=80
+    )
+
+    st.title("Brain Tumor AI")
+
+    st.markdown("""
+### Features
+
+✅ MRI Classification
+
+✅ Grad-CAM Explainability
+
+✅ Confidence Score
+
+✅ Entropy Analysis
+
+✅ Uncertainty Estimation
+""")
+
+    st.info(
+        "Upload a brain MRI image to begin analysis."
+    )
+
+
+# =====================================================
+# LOAD MODEL
+# =====================================================
 
 @st.cache_resource
 def load_brain_tumor_model():
@@ -35,10 +120,13 @@ def load_brain_tumor_model():
 
     return model
 
+
 loaded_model = load_brain_tumor_model()
 
 
-
+# =====================================================
+# CLASS NAMES
+# =====================================================
 
 class_names = [
     "glioma",
@@ -46,22 +134,35 @@ class_names = [
     "notumor",
     "pituitary"
 ]
+
 tumor_names = {
-    "glioma": "Glioma Tumor",
-    "meningioma": "Meningioma Tumor",
-    "pituitary": "Pituitary Tumor",
-    "notumor": "No Tumor"
+
+    "glioma":"Glioma Tumor",
+
+    "meningioma":"Meningioma Tumor",
+
+    "pituitary":"Pituitary Tumor",
+
+    "notumor":"No Tumor"
 }
 
 
+# =====================================================
+# GRADCAM SETUP
+# =====================================================
 
-resnet_model = loaded_model.get_layer("resnet152v2")
-
-grad_backbone = tf.keras.Model(
-    inputs=resnet_model.input,
-    outputs=resnet_model.get_layer("post_relu").output
+resnet_model = loaded_model.get_layer(
+    "resnet152v2"
 )
 
+grad_backbone = tf.keras.Model(
+
+    inputs=resnet_model.input,
+
+    outputs=resnet_model.get_layer(
+        "post_relu"
+    ).output
+)
 
 
 bn_layer = loaded_model.get_layer(
@@ -76,6 +177,7 @@ output_layer = loaded_model.get_layer(
     "dense_1"
 )
 
+
 feature_input = tf.keras.Input(
     shape=(7,7,2048)
 )
@@ -84,7 +186,9 @@ x = tf.keras.layers.GlobalAveragePooling2D()(
     feature_input
 )
 
-x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.BatchNormalization()(
+    x
+)
 
 x = tf.keras.layers.Dense(
     256,
@@ -96,10 +200,12 @@ predictions = tf.keras.layers.Dense(
     activation="softmax"
 )(x)
 
+
 classifier_model = tf.keras.Model(
     feature_input,
     predictions
 )
+
 
 classifier_model.layers[2].set_weights(
     bn_layer.get_weights()
@@ -114,10 +220,14 @@ classifier_model.layers[4].set_weights(
 )
 
 
+# =====================================================
+# GRADCAM
+# =====================================================
 
-
-def generate_gradcam(feature_maps,
-                     classifier_model):
+def generate_gradcam(
+        feature_maps,
+        classifier_model
+):
 
     feature_maps_tensor = tf.convert_to_tensor(
         feature_maps,
@@ -126,7 +236,9 @@ def generate_gradcam(feature_maps,
 
     with tf.GradientTape() as tape:
 
-        tape.watch(feature_maps_tensor)
+        tape.watch(
+            feature_maps_tensor
+        )
 
         preds = classifier_model(
             feature_maps_tensor,
@@ -137,7 +249,7 @@ def generate_gradcam(feature_maps,
             preds[0]
         )
 
-        class_score = preds[:, pred_index]
+        class_score = preds[:,pred_index]
 
     grads = tape.gradient(
         class_score,
@@ -152,7 +264,9 @@ def generate_gradcam(feature_maps,
     feature_map = feature_maps_tensor[0]
 
     heatmap = tf.reduce_sum(
+
         feature_map * pooled_grads,
+
         axis=-1
     )
 
@@ -168,11 +282,19 @@ def generate_gradcam(feature_maps,
     return heatmap.numpy()
 
 
-def create_overlay(original_img,
-                   heatmap):
+# =====================================================
+# OVERLAY
+# =====================================================
+
+def create_overlay(
+        original_img,
+        heatmap
+):
 
     heatmap_resized = cv2.resize(
+
         heatmap,
+
         (
             original_img.shape[1],
             original_img.shape[0]
@@ -184,25 +306,38 @@ def create_overlay(original_img,
     )
 
     heatmap_color = cv2.applyColorMap(
+
         heatmap_uint8,
+
         cv2.COLORMAP_JET
     )
 
     heatmap_color = cv2.cvtColor(
+
         heatmap_color,
+
         cv2.COLOR_BGR2RGB
     )
 
     overlay = cv2.addWeighted(
+
         original_img,
+
         0.6,
+
         heatmap_color,
+
         0.4,
+
         0
     )
 
     return overlay
 
+
+# =====================================================
+# PREDICTION
+# =====================================================
 
 def predict_and_explain(img):
 
@@ -223,13 +358,12 @@ def predict_and_explain(img):
         img_array
     )
 
-    # ------------------
-    # Prediction
-    # ------------------
-
     probs = loaded_model.predict(
+
         img_array,
+
         verbose=0
+
     )[0]
 
     pred_idx = np.argmax(
@@ -241,77 +375,97 @@ def predict_and_explain(img):
     ]
 
     confidence = float(
-        np.max(probs) * 100
+        np.max(probs)*100
     )
-
-    # ------------------
-    # Entropy
-    # ------------------
 
     probs_safe = np.clip(
         probs,
         1e-10,
-        1.0
+        1
     )
 
     entropy = float(
         -np.sum(
-            probs_safe *
-            np.log(probs_safe)
+            probs_safe*np.log(
+                probs_safe
+            )
         )
     )
 
     if entropy < 0.5:
+
         uncertainty = "LOW"
 
-    elif entropy < 1.0:
+    elif entropy < 1:
+
         uncertainty = "MEDIUM"
 
     else:
+
         uncertainty = "HIGH"
 
-    # ------------------
-    # Grad-CAM
-    # ------------------
-
     feature_maps = grad_backbone.predict(
+
         img_array,
+
         verbose=0
+
     )
 
     heatmap = generate_gradcam(
+
         feature_maps,
+
         classifier_model
     )
 
     return (
+
         pred_class,
+
         confidence,
+
         entropy,
+
         uncertainty,
+
         heatmap
+
     )
 
 
+# =====================================================
+# FILE UPLOADER
+# =====================================================
+
+st.subheader("📤 Upload MRI")
+
 uploaded_file = st.file_uploader(
-    "Upload MRI Image",
-    type=["jpg", "jpeg", "png"]
+
+    "",
+
+    type=["jpg","jpeg","png"]
+
 )
 
-tumor_names = {
-    "glioma": "Glioma Tumor",
-    "meningioma": "Meningioma Tumor",
-    "pituitary": "Pituitary Tumor",
-    "notumor": "No Tumor"
-}
+
+# =====================================================
+# DISPLAY RESULTS
+# =====================================================
 
 if uploaded_file is not None:
 
-    img = Image.open(uploaded_file).convert("RGB")
+    img = Image.open(
+        uploaded_file
+    ).convert("RGB")
 
-    original_img = np.array(img)
+    original_img = np.array(
+        img
+    )
 
-    with st.spinner("Analyzing MRI..."):
+    with st.spinner(
+        "Analyzing MRI..."
+    ):
 
         pred_class, confidence, entropy, uncertainty, heatmap = predict_and_explain(img)
 
@@ -320,80 +474,156 @@ if uploaded_file is not None:
             heatmap
         )
 
-    st.subheader("MRI Analysis")
 
-    col1, col2 = st.columns(2)
+    st.markdown("---")
+
+    st.subheader(
+        "🧪 MRI Analysis"
+    )
+
+    col1,col2 = st.columns(2)
 
     with col1:
+
+        st.markdown(
+            "### Original MRI"
+        )
+
         st.image(
+
             original_img,
-            caption="Original MRI Scan",
-            width=350
+
+            use_container_width=True
+
         )
 
     with col2:
+
+        st.markdown(
+            "### Explainability"
+        )
+
         st.image(
+
             overlay,
-            caption="Grad-CAM Explainability",
-            width=350
+
+            use_container_width=True
+
         )
 
-    st.subheader("Prediction Results")
 
-    c1, c2, c3, c4 = st.columns(4)
+    st.markdown("---")
 
-    with c1:
-        st.metric(
-            "Prediction",
-            tumor_names[pred_class]
-        )
+    st.subheader(
+        "📊 Prediction Results"
+    )
 
-    with c2:
-        st.metric(
-            "Confidence",
-            f"{confidence:.2f}%"
-        )
+    c1,c2,c3,c4 = st.columns(4)
 
-    with c3:
-        st.metric(
-            "Entropy",
-            f"{entropy:.4f}"
-        )
+    c1.metric(
 
-    with c4:
-        st.metric(
-            "Uncertainty",
-            uncertainty
-        )
+        "Prediction",
+
+        tumor_names[pred_class]
+
+    )
+
+    c2.metric(
+
+        "Confidence",
+
+        f"{confidence:.2f}%"
+
+    )
+
+    c3.metric(
+
+        "Entropy",
+
+        f"{entropy:.4f}"
+
+    )
+
+    c4.metric(
+
+        "Uncertainty",
+
+        uncertainty
+
+    )
+
+
+    st.markdown(
+        "### Confidence Score"
+    )
+
+    st.progress(
+        int(confidence)
+    )
+
+    st.write(
+        f"{confidence:.2f}%"
+    )
+
 
     st.markdown("---")
 
     if confidence > 95:
+
         st.success(
             "✅ Very High Confidence Prediction"
         )
 
     elif confidence > 80:
+
         st.info(
             "ℹ️ High Confidence Prediction"
         )
 
     else:
+
         st.warning(
             "⚠️ Low Confidence Prediction"
         )
 
+
     if uncertainty == "LOW":
+
         st.success(
-            "🟢 Uncertainty Level: LOW"
+            "🟢 Uncertainty Level : LOW"
         )
 
     elif uncertainty == "MEDIUM":
+
         st.warning(
-            "🟡 Uncertainty Level: MEDIUM"
+            "🟡 Uncertainty Level : MEDIUM"
         )
 
     else:
+
         st.error(
-            "🔴 Uncertainty Level: HIGH"
+            "🔴 Uncertainty Level : HIGH"
         )
+
+
+# =====================================================
+# FOOTER
+# =====================================================
+
+st.markdown("---")
+
+st.caption("""
+
+Developed using
+
+🧠 ResNet152V2
+
+🔥 Grad-CAM
+
+📈 Entropy Analysis
+
+⚡ TensorFlow
+
+☁️ Hugging Face
+
+""")
